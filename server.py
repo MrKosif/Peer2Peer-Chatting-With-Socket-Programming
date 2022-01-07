@@ -7,17 +7,12 @@ ServerSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 ServerSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 ServerSocket.bind(("", 5556))
 
-#host = ""
-#port = 5555
 ThreadCount = 0
 HEADER_LENGTH = 10
 login_credentials = {}
 client_addresses = {}
 socket_addresses = {}
-#try:
-#    ServerSocket.bind((host, port))
-#except socket.error as e:
-#    print(str(e))
+online_users = []
 
 print('Waitiing for a Connection..')
 ServerSocket.listen(5)
@@ -37,18 +32,28 @@ def receive_object(client_socket):
     unpickled_data = pickle.loads(client_data)
     return unpickled_data
 
+
 def register_client(user_data, client_socket):
-    print("geldim")
     username = user_data["username"]
     if username not in login_credentials:
         login_credentials[username] = user_data["password"]
-        client_socket.sendall("User successfully created!")
-        print("Hesap başarıyla oluşturuldu!")
         client_addresses[username] = socket_addresses[client_socket]
-        client_socket.sendall(str.encode("Hesap başarıyla oluşturuldu!"))
+        client_socket.sendall(str.encode("User successfully created!"))
 
     elif username in login_credentials:
-        client_socket.sendall("This username already in use!")
+        client_socket.sendall(str.encode("This username already in use!"))
+
+
+def login_client(user_data, client_socket):
+    username = user_data["username"]
+    password = user_data["password"]
+    if username in login_credentials:
+        if password == login_credentials[username]:
+            online_users.append(username)
+            client_socket.sendall(str.encode("CONFIRMED"))
+            return
+
+    client_socket.sendall(str.encode("DECLINED"))
 
 
 def threaded_client(connection):
@@ -56,11 +61,14 @@ def threaded_client(connection):
     while True:
         data = receive_object(connection)
         print(data)
-        if not data:
-            continue
+        if not data or data==False:
+            break
 
-        if data["command"] == "REGISTER":
+        elif data["command"] == "REGISTER":
             register_client(data, connection)
+
+        elif data["command"] == "LOGIN":
+            login_client(data, connection)
 
     connection.close()
 
