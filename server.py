@@ -37,6 +37,7 @@ def register_client(user_data, client_socket):
     username = user_data["username"]
     if username not in login_credentials:
         login_credentials[username] = user_data["password"]
+        socket_addresses[client_socket].append(user_data["port"])
         client_addresses[username] = socket_addresses[client_socket]
         client_socket.sendall(str.encode("User successfully created!"))
 
@@ -88,7 +89,7 @@ def threaded_client(connection):
 
 while True:
     client_socket, address = ServerSocket.accept()
-    socket_addresses[client_socket] = address
+    socket_addresses[client_socket] = [address[0]]
     print('Connected to: ' + address[0] + ':' + str(address[1]))
     start_new_thread(threaded_client, (client_socket, ))
     ThreadCount += 1

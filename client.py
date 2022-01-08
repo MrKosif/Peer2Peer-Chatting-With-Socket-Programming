@@ -4,6 +4,10 @@ import pickle
 ClientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 ClientSocket.connect(('192.168.1.2', 5556))
 
+udp_socket = 5566
+server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+server_socket.bind(("", udp_socket))
+
 HEADER_LENGTH = 10
 
 print('Waiting for connection')
@@ -32,7 +36,7 @@ def register_user(client_socket):
         print("Please Enter valid inputs!")
         start_menu()
     print()
-    register_credentials = {"command": "REGISTER", "username": username, "password": password}
+    register_credentials = {"command": "REGISTER", "username": username, "password": password, "port": udp_socket}
     client_socket.send(format_message(register_credentials))
     print(client_socket.recv(1024).decode("utf-8"))
     start_menu(client_socket)
@@ -43,13 +47,10 @@ def handle_search(username, client_socket):
     client_socket.send(format_message(search_request))
     user_data = receive_object(client_socket)
     print(user_data)
-    # MAKES CONNECTION WITH ANOTHER PEER
-    #IP = user_data["data"][0]
-    #PORT = user_data[1]
-    #friend_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    #friend_socket.connect((IP, PORT))
-    #friend_socket.setblocking(True)
-
+    IP = user_data[0]
+    PORT = user_data[1]
+    friend_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    friend_socket.connect((IP, PORT))
 
 ##################  LOGIN  ##################
 def login_user(client_socket):
@@ -68,6 +69,7 @@ def login_user(client_socket):
     elif user_data == "DECLINED":
         print("Incorrect username of password")
         start_menu(client_socket)
+
 
 def logined_menu(username, client_socket):
     while True:
@@ -95,6 +97,7 @@ def logined_menu(username, client_socket):
                 print("Please enter a valid input!")
 
 
+##################  START MENU  ##################
 def start_menu(client_socket):
     print()
     print("welcome to the chat system!")
