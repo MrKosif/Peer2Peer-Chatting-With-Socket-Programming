@@ -55,6 +55,16 @@ def login_client(user_data, client_socket):
 
     client_socket.sendall(str.encode("DECLINED"))
 
+def search_users(user_data, client_socket):
+    print("Birinci adım")
+    # This only checks the user list but it should also check if the user online or not
+    for username in client_addresses:
+        if username == user_data["username"]:
+            #packet = {"command": "FOUND", "username": username}
+            client_socket.send(format_message(client_addresses[username]))
+            return
+    client_socket.sendall("NOT FOUND")
+
 
 def threaded_client(connection):
     #connection.send(str.encode('Welcome to the Servern'))
@@ -69,6 +79,9 @@ def threaded_client(connection):
 
         elif data["command"] == "LOGIN":
             login_client(data, connection)
+
+        elif data["command"] == "SEARCH":
+            search_users(data, connection)
 
     connection.close()
 

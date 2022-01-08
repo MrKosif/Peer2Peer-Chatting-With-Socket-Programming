@@ -37,6 +37,19 @@ def register_user(client_socket):
     print(client_socket.recv(1024).decode("utf-8"))
     start_menu(client_socket)
 
+def handle_search(username, client_socket):
+    print("2. beklenti")
+    search_request = {"command": "SEARCH", "username": username}
+    client_socket.send(format_message(search_request))
+    user_data = receive_object(client_socket)
+    print(user_data)
+    # MAKES CONNECTION WITH ANOTHER PEER
+    #IP = user_data["data"][0]
+    #PORT = user_data[1]
+    #friend_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    #friend_socket.connect((IP, PORT))
+    #friend_socket.setblocking(True)
+
 
 ##################  LOGIN  ##################
 def login_user(client_socket):
@@ -50,11 +63,36 @@ def login_user(client_socket):
 
     if user_data == "CONFIRMED":
         print("User successfully logined!")
-        #search_menu(client_socket)
+        logined_menu(username, client_socket)
 
     elif user_data == "DECLINED":
         print("Incorrect username of password")
         start_menu(client_socket)
+
+def logined_menu(username, client_socket):
+    while True:
+        print()
+        print(f"Welcome {username}!")
+        print("---------------------------")
+        print("1- Search a user")
+        print("2- Log out")
+        print("---------------------------")
+        print()
+
+        while True:
+            choice = input(">> ")
+            if choice == "1":
+                print()
+                print("##### Search User ##### ")
+                search_username = input("Search User: ")
+                print("---------------------------") 
+                handle_search(search_username, client_socket)
+                break
+
+            elif choice== "2":
+                pass
+            else:
+                print("Please enter a valid input!")
 
 
 def start_menu(client_socket):
@@ -70,9 +108,11 @@ def start_menu(client_socket):
         choice = input(">> ")
         if choice == "1":
             register_user(client_socket)
+            break
 
         elif choice== "2":
             login_user(client_socket)
+            break
         else:
             print("Please enter a valid input!")
 
