@@ -32,7 +32,7 @@ def receive_object(client_socket):
     unpickled_data = pickle.loads(client_data)
     return unpickled_data
 
-
+#################### REGISTER #####################
 def register_client(user_data, client_socket):
     username = user_data["username"]
     if username not in login_credentials:
@@ -45,6 +45,7 @@ def register_client(user_data, client_socket):
         client_socket.sendall(str.encode("This username already in use!"))
 
 
+####################  LOGIN  #####################
 def login_client(user_data, client_socket):
     username = user_data["username"]
     password = user_data["password"]
@@ -56,6 +57,8 @@ def login_client(user_data, client_socket):
 
     client_socket.sendall(str.encode("DECLINED"))
 
+
+#################### SEARCH #####################
 def search_users(user_data, client_socket):
     print("Birinci adım")
     # This only checks the user list but it should also check if the user online or not
@@ -64,7 +67,8 @@ def search_users(user_data, client_socket):
             #packet = {"command": "FOUND", "username": username}
             client_socket.send(format_message(client_addresses[username]))
             return
-    client_socket.sendall("NOT FOUND")
+
+    client_socket.sendall(str.encode("NOT FOUND"))
 
 
 def threaded_client(connection):

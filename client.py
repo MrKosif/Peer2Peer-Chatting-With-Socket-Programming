@@ -1,14 +1,19 @@
 import socket
 import pickle
+from _thread import *
+import threading
 
 ClientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 ClientSocket.connect(('192.168.1.2', 5556))
 
 udp_socket = 5566
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+#server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 server_socket.bind(("", udp_socket))
 
 HEADER_LENGTH = 10
+global busy
+busy = False
 
 print('Waiting for connection')
 
@@ -41,16 +46,6 @@ def register_user(client_socket):
     print(client_socket.recv(1024).decode("utf-8"))
     start_menu(client_socket)
 
-def handle_search(username, client_socket):
-    print("2. beklenti")
-    search_request = {"command": "SEARCH", "username": username}
-    client_socket.send(format_message(search_request))
-    user_data = receive_object(client_socket)
-    print(user_data)
-    IP = user_data[0]
-    PORT = user_data[1]
-    friend_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    friend_socket.connect((IP, PORT))
 
 ##################  LOGIN  ##################
 def login_user(client_socket):
@@ -79,7 +74,6 @@ def logined_menu(username, client_socket):
         print("1- Search a user")
         print("2- Log out")
         print("---------------------------")
-        print()
 
         while True:
             choice = input(">> ")
@@ -95,6 +89,84 @@ def logined_menu(username, client_socket):
                 pass
             else:
                 print("Please enter a valid input!")
+
+
+
+
+
+
+###############  SEARCH  #######################
+def handle_search(username, client_socket):
+    # addd someting like hey this is the user you searched do you want to send a request
+
+    search_request = {"command": "SEARCH", "username": username}
+    client_socket.send(format_message(search_request))
+    user_data = receive_object(client_socket)
+    print(user_data)
+    IP = user_data[0]
+    PORT = user_data[1]
+    server_socket.sendto(str.encode("CHAT REQUEST"), (IP, PORT)) 
+    answer = server_socket.recvfrom(1024)
+    print(answer[0])
+    print("chatting is starting")
+    ## Call the chatting function if answer is OK if its REJECT than return
+    # SEND YOUR USERNAME TOOOOO
+
+################  LISTENING PART  #################
+def handle_request(command, ip, port):
+    global busy
+    if busy == True:
+        server_socket.sendto(str.encode("BUSY"),(ip, port)) 
+        return
+
+    if command == "CHAT REQUEST":
+        busy = True
+        chat_request(ip, port)
+        busy = False
+        return
+
+    elif command == "OK":
+        print("chatting is starting")
+        return
+        ### Start chatting from here
+
+    elif command == "REJECT":
+        print(f"User {ip} rejected the request!")
+        return
+
+    elif command == "BUSY":
+        print(f"User {ip} is chatting with someone else!")
+        return
+
+
+def listen_socket():
+    global busy
+    busy = False
+    while True:
+        msg = server_socket.recvfrom(1024)
+        command = msg[0].decode("utf-8")
+        ip = msg[1][0]
+        port = msg[1][1]
+        start_new_thread(handle_request, (command, ip, port))
+        #job = threading.Thread(target=handle_request, args=(command, ip, port))
+
+
+###################### CHATT PARTT #########################
+def chat_request(ip, port):
+    print()
+    print(f"user {ip} want to chat with you.")
+    print("Whould you like to accept?")
+    print("yes / no")
+    answer = input(">> ")
+    if answer == "yes":
+        server_socket.sendto(str.encode("OK"),(ip, port)) 
+        print("Chatting is starting...")
+        # chat()
+    elif answer == "no":
+        server_socket.sendto(str.encode("REJECT"),(ip, port)) 
+        return
+    else:
+        print("Please enter a valid input!")
 
 
 ##################  START MENU  ##################
@@ -120,6 +192,10 @@ def start_menu(client_socket):
             print("Please enter a valid input!")
 
 
-start_menu(ClientSocket)
-
+li = threading.Thread(target=listen_socket)
+men = threading.Thread(target=start_menu, args=(ClientSocket,))
+li.start()
+men.start()
+li.join()
+men.join()
 ClientSocket.close()
