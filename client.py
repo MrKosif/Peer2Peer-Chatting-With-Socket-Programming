@@ -69,7 +69,6 @@ def login_user(client_socket):
 
 
 def logined_menu(username, client_socket):
-    job.join()
     while True:
         print()
         print(f"Welcome {username}!")
@@ -87,12 +86,14 @@ def logined_menu(username, client_socket):
                 print("---------------------------") 
                 handle_search(search_username, client_socket)
                 break
-
             elif choice== "2":
                 pass
             else:
-                print("Please enter a valid input!")
-
+                try:
+                    job.join()
+                except:
+                    pass
+                break
 
 
 ###############  SEARCH  #######################
@@ -100,52 +101,62 @@ def handle_search(username, client_socket):
     # addd someting like hey this is the user you searched do you want to send a request
     search_request = {"command": "SEARCH", "username": username}
     client_socket.send(format_message(search_request))
+    ### usernameini de al
     user_data = receive_object(client_socket)
-    print(user_data)
+    if user_data[0] == "NOT FOUND":
+        print("User is not found!")
+        return
     IP = user_data[0]
     PORT = user_data[1]
-    server_socket.sendto(str.encode("CHAT REQUEST"), (IP, PORT)) 
-    answer = server_socket.recvfrom(1024)
-    print(answer[0])
-    print("chatting is starting")
+    server_socket.sendto(str.encode("CHAT REQUEST"), (IP, PORT))
+
+
     ## Call the chatting function if answer is OK if its REJECT than return
     # SEND YOUR USERNAME TOOOOO
 
 
 ###################### CHATT PARTT #########################
+
+def chatting(ip, port, username):
+    while True:
+        message = input(username + " > ")
+        server_socket.sendto(str.encode(message), (ip, port))
+
 def chat_request(ip, port):
     print()
     print(f"user {ip} want to chat with you.")
     print("Whould you like to accept?")
     print("yes / no")
-    answer = input(">> ")
-    if answer == "yes":
-        server_socket.sendto(str.encode("OK"),(ip, port)) 
-        print("Chatting is starting...")
-        return
-        # chat()
-    elif answer == "no":
-        server_socket.sendto(str.encode("REJECT"),(ip, port)) 
-        return
-    else:
-        print("Please enter a valid input!")
-    
+    while True:
+        answer = input(">> ")
+        if answer == "yes":
+            server_socket.sendto(str.encode("OK"),(ip, port)) 
+            print("Chatting is starting...")
+            chatting(ip, port, "ANAN")
+            return
+        elif answer == "no":
+            server_socket.sendto(str.encode("REJECT"),(ip, port)) 
+            return
+        else:
+            print("Please enter a valid input!")
+        
 
 ################  LISTENING PART  #################
 def handle_request(command, ip, port):
-    global busy
-    if busy == True:
-        server_socket.sendto(str.encode("BUSY"),(ip, port)) 
-        return
-
     if command == "CHAT REQUEST":
+        global busy
+        if busy == True:
+            server_socket.sendto(str.encode("BUSY"),(ip, port)) 
+            return
+        
         busy = True
         chat_request(ip, port)
         busy = False
         return
 
     elif command == "OK":
-        print("chatting is starting")
+        print("Pres Enter to start chatting")
+        chatting(ip, port, "yeni")
         return
         ### Start chatting from here
 
@@ -156,6 +167,9 @@ def handle_request(command, ip, port):
     elif command == "BUSY":
         print(f"User {ip} is chatting with someone else!")
         return
+
+    else:
+        print(f"anonimus > {command}")
 
 
 def listen_socket():
@@ -170,7 +184,6 @@ def listen_socket():
         global job
         job = threading.Thread(target=handle_request, args=(command, ip, port))
         job.start()
-        job.join()
 
 
 ##################  START MENU  ##################

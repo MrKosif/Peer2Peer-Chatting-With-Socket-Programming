@@ -68,7 +68,7 @@ def search_users(user_data, client_socket):
             client_socket.send(format_message(client_addresses[username]))
             return
 
-    client_socket.sendall(str.encode("NOT FOUND"))
+    client_socket.sendall(format_message(["NOT FOUND"]))
 
 
 def threaded_client(connection):
