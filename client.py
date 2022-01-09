@@ -15,6 +15,8 @@ HEADER_LENGTH = 10
 global busy
 busy = False
 
+job = threading.Thread()
+
 print('Waiting for connection')
 
 ##################  OBJECT RECEIVE AND SENDING ##################
@@ -67,6 +69,7 @@ def login_user(client_socket):
 
 
 def logined_menu(username, client_socket):
+    job.join()
     while True:
         print()
         print(f"Welcome {username}!")
@@ -92,13 +95,9 @@ def logined_menu(username, client_socket):
 
 
 
-
-
-
 ###############  SEARCH  #######################
 def handle_search(username, client_socket):
     # addd someting like hey this is the user you searched do you want to send a request
-
     search_request = {"command": "SEARCH", "username": username}
     client_socket.send(format_message(search_request))
     user_data = receive_object(client_socket)
@@ -111,6 +110,26 @@ def handle_search(username, client_socket):
     print("chatting is starting")
     ## Call the chatting function if answer is OK if its REJECT than return
     # SEND YOUR USERNAME TOOOOO
+
+
+###################### CHATT PARTT #########################
+def chat_request(ip, port):
+    print()
+    print(f"user {ip} want to chat with you.")
+    print("Whould you like to accept?")
+    print("yes / no")
+    answer = input(">> ")
+    if answer == "yes":
+        server_socket.sendto(str.encode("OK"),(ip, port)) 
+        print("Chatting is starting...")
+        return
+        # chat()
+    elif answer == "no":
+        server_socket.sendto(str.encode("REJECT"),(ip, port)) 
+        return
+    else:
+        print("Please enter a valid input!")
+    
 
 ################  LISTENING PART  #################
 def handle_request(command, ip, port):
@@ -147,26 +166,11 @@ def listen_socket():
         command = msg[0].decode("utf-8")
         ip = msg[1][0]
         port = msg[1][1]
-        start_new_thread(handle_request, (command, ip, port))
-        #job = threading.Thread(target=handle_request, args=(command, ip, port))
-
-
-###################### CHATT PARTT #########################
-def chat_request(ip, port):
-    print()
-    print(f"user {ip} want to chat with you.")
-    print("Whould you like to accept?")
-    print("yes / no")
-    answer = input(">> ")
-    if answer == "yes":
-        server_socket.sendto(str.encode("OK"),(ip, port)) 
-        print("Chatting is starting...")
-        # chat()
-    elif answer == "no":
-        server_socket.sendto(str.encode("REJECT"),(ip, port)) 
-        return
-    else:
-        print("Please enter a valid input!")
+        #start_new_thread(handle_request, (command, ip, port))
+        global job
+        job = threading.Thread(target=handle_request, args=(command, ip, port))
+        job.start()
+        job.join()
 
 
 ##################  START MENU  ##################
