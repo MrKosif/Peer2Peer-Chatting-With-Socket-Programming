@@ -119,14 +119,17 @@ def handle_search(username, client_socket):
 
 def chatting(ip, port, username):
     while True:
-        message = input(username + " > ")
+        message = input(">> ")
+        if message == "exit":
+            return
         server_socket.sendto(str.encode(message), (ip, port))
 
 def chat_request(ip, port):
     print()
-    print(f"user {ip} want to chat with you.")
+    print(f"User {ip} want to chat with you.")
     print("Whould you like to accept?")
     print("yes / no")
+    print("Pres Enter to answer!")
     while True:
         answer = input(">> ")
         if answer == "yes":
@@ -169,7 +172,7 @@ def handle_request(command, ip, port):
         return
 
     else:
-        print(f"anonimus > {command}")
+        print(f"abuzer: {command}")
 
 
 def listen_socket():
