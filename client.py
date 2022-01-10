@@ -2,11 +2,12 @@ import socket
 import pickle
 from _thread import *
 import threading
+import time
 
 ClientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 ClientSocket.connect(('192.168.1.2', 5556))
 
-udp_socket = 5566
+udp_socket = 4445
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 #server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 server_socket.bind(("", udp_socket))
@@ -14,6 +15,10 @@ server_socket.bind(("", udp_socket))
 HEADER_LENGTH = 10
 global busy
 busy = False
+online = False
+
+my_username = ""
+friends_username = ""
 
 job = threading.Thread()
 
@@ -41,12 +46,12 @@ def register_user(client_socket):
     password = input("Password: ")
     if username == "" or password == "":
         print("Please Enter valid inputs!")
-        start_menu()
+        return
     print()
     register_credentials = {"command": "REGISTER", "username": username, "password": password, "port": udp_socket}
     client_socket.send(format_message(register_credentials))
     print(client_socket.recv(1024).decode("utf-8"))
-    start_menu(client_socket)
+    return
 
 
 ##################  LOGIN  ##################
@@ -61,14 +66,19 @@ def login_user(client_socket):
 
     if user_data == "CONFIRMED":
         print("User successfully logined!")
+        global online
+        online = True
+        signal = threading.Thread(target=send_signal, args=(client_socket, username))
+        signal.start()
         logined_menu(username, client_socket)
 
     elif user_data == "DECLINED":
         print("Incorrect username of password")
-        start_menu(client_socket)
-
+        return
 
 def logined_menu(username, client_socket):
+    global my_username
+    my_username = username
     while True:
         print()
         print(f"Welcome {username}!")
@@ -85,14 +95,23 @@ def logined_menu(username, client_socket):
                 search_username = input("Search User: ")
                 print("---------------------------") 
                 handle_search(search_username, client_socket)
+                #while True:
+                #    time.sleep(2)
+                #    if busy == False:
+                #        break
                 break
-            elif choice== "2":
-                pass
+
+            elif choice == "2":
+                global online
+                client_socket.send(format_message({"command": "LOGOUT", "username": username}))
+                online = False
+                return
+
             else:
-                try:
-                    job.join()
-                except:
-                    pass
+                while True:
+                    time.sleep(2)
+                    if busy == False:
+                        break
                 break
 
 
@@ -101,32 +120,36 @@ def handle_search(username, client_socket):
     # addd someting like hey this is the user you searched do you want to send a request
     search_request = {"command": "SEARCH", "username": username}
     client_socket.send(format_message(search_request))
-    ### usernameini de al
     user_data = receive_object(client_socket)
     if user_data[0] == "NOT FOUND":
         print("User is not found!")
         return
+    global friends_username
+    friends_username = username
     IP = user_data[0]
     PORT = user_data[1]
-    server_socket.sendto(str.encode("CHAT REQUEST"), (IP, PORT))
+    print()
+    server_socket.sendto(str.encode("CHAT REQUEST|" + my_username), (IP, PORT))
 
-
-    ## Call the chatting function if answer is OK if its REJECT than return
     # SEND YOUR USERNAME TOOOOO
 
 
 ###################### CHATT PARTT #########################
 
-def chatting(ip, port, username):
+def chatting(ip, port):
+    global my_username
     while True:
-        message = input(">> ")
+        message = input()
+        print ('\033[1A' + my_username + ": " + message + '\033[K')
         if message == "exit":
+            server_socket.sendto(str.encode(f"User {my_username} disconnected from chat!"), (ip, port))
             return
         server_socket.sendto(str.encode(message), (ip, port))
 
+
 def chat_request(ip, port):
     print()
-    print(f"User {ip} want to chat with you.")
+    print(f"User {friends_username} want to chat with you.")
     print("Whould you like to accept?")
     print("yes / no")
     print("Pres Enter to answer!")
@@ -135,7 +158,7 @@ def chat_request(ip, port):
         if answer == "yes":
             server_socket.sendto(str.encode("OK"),(ip, port)) 
             print("Chatting is starting...")
-            chatting(ip, port, "ANAN")
+            chatting(ip, port)
             return
         elif answer == "no":
             server_socket.sendto(str.encode("REJECT"),(ip, port)) 
@@ -146,7 +169,9 @@ def chat_request(ip, port):
 
 ################  LISTENING PART  #################
 def handle_request(command, ip, port):
-    if command == "CHAT REQUEST":
+    global friends_username
+    if command[:12] == "CHAT REQUEST":
+        friends_username = command.split("|")[1]
         global busy
         if busy == True:
             server_socket.sendto(str.encode("BUSY"),(ip, port)) 
@@ -159,7 +184,9 @@ def handle_request(command, ip, port):
 
     elif command == "OK":
         print("Pres Enter to start chatting")
-        chatting(ip, port, "yeni")
+        busy = True
+        chatting(ip, port)
+        busy = False
         return
         ### Start chatting from here
 
@@ -172,7 +199,7 @@ def handle_request(command, ip, port):
         return
 
     else:
-        print(f"abuzer: {command}")
+        print(f"{friends_username}: {command}")
 
 
 def listen_socket():
@@ -191,25 +218,43 @@ def listen_socket():
 
 ##################  START MENU  ##################
 def start_menu(client_socket):
-    print()
-    print("welcome to the chat system!")
-    print("---------------------------")
-    print("1- Register to System")
-    print("2- Login to System")
-    print("---------------------------")
-    print()
-
     while True:
-        choice = input(">> ")
-        if choice == "1":
-            register_user(client_socket)
-            break
+        print()
+        print("---------------------------")
+        print("Welcome to the chat system!")
+        print("---------------------------")
+        print("1- Register to System")
+        print("2- Login to System")
+        print("---------------------------")
+        print()
 
-        elif choice== "2":
-            login_user(client_socket)
-            break
+        while True:
+            choice = input(">> ")
+            if choice == "1":
+                register_user(client_socket)
+                break
+
+            elif choice== "2":
+                login_user(client_socket)
+                break
+
+            else:
+                print("Please enter a valid input!")
+
+
+def send_signal(client_socket, username):
+    global online
+    while True:
+        if online == True:
+            counter = 0
+            while True:
+                if counter == 6:
+                    client_socket.send(format_message({"command": "HELLO", "username": username}))
+                    break
+                time.sleep(1)
+                counter += 1
         else:
-            print("Please enter a valid input!")
+            return
 
 
 li = threading.Thread(target=listen_socket)
