@@ -4,9 +4,10 @@ from _thread import *
 import pickle
 import time
 import datetime
+import threading
 
 ServerSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-ServerSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+#ServerSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 ServerSocket.bind(("", 5556))
 
 ThreadCount = 0
@@ -89,7 +90,10 @@ def threaded_client(connection):
     #connection.send(str.encode('Welcome to the Servern'))
     while True:
         data = receive_object(connection)
-        add_to_log(str(data["command"]))
+        try:
+            add_to_log(str(data["command"]))
+        except:
+            pass
         if not data or data==False:
             break
 
@@ -118,6 +122,7 @@ def threaded_client(connection):
 def connection_guard():
     naughty_list = []
     while True:
+        print(online_users)
         for username in online_users:
             if online_users[username] == 20:
                 naughty_list.append(username)
@@ -131,15 +136,17 @@ def connection_guard():
         naughty_list = []
         time.sleep(1)
 
+def main():
+    guard = threading.Thread(target=connection_guard)
+    guard.start()
 
+    while True:
+        client_socket, address = ServerSocket.accept()
+        socket_addresses[client_socket] = [address[0]]
+        print('Connected to: ' + address[0] + ':' + str(address[1]))
+        add_to_log('Connected to: ' + address[0] + ':' + str(address[1]))
+        #start_new_thread(threaded_client, (client_socket, ))
+        client = threading.Thread(target=threaded_client, args=((client_socket,)))
+        client.start()
 
-while True:
-    client_socket, address = ServerSocket.accept()
-    socket_addresses[client_socket] = [address[0]]
-    print('Connected to: ' + address[0] + ':' + str(address[1]))
-    add_to_log('Connected to: ' + address[0] + ':' + str(address[1]))
-    start_new_thread(threaded_client, (client_socket, ))
-    start_new_thread(connection_guard, (()))
-    ThreadCount += 1
-    print('Thread Number: ' + str(ThreadCount))
-ServerSocket.close()
+main()
