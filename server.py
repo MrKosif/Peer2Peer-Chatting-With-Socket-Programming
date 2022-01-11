@@ -3,6 +3,7 @@ import os
 from _thread import *
 import pickle
 import time
+import datetime
 
 ServerSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 ServerSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -19,8 +20,10 @@ print('Waitiing for a Connection..')
 ServerSocket.listen(5)
 
 def add_to_log(info):
+    time = str(datetime.datetime.now()).split(" ")[1].split(".")[0]
+    date = date = str(datetime.datetime.now()).split(" ")[0]
     with open("server_log.txt", "a+") as file:
-        file.write(info+"\n")
+        file.write(f"{date} {time}: {info}\n")
 
 def format_message(data):
     pickled_data = pickle.dumps(data)
@@ -86,7 +89,7 @@ def threaded_client(connection):
     #connection.send(str.encode('Welcome to the Servern'))
     while True:
         data = receive_object(connection)
-        add_to_log(data["command"])
+        add_to_log(str(data["command"]))
         if not data or data==False:
             break
 
@@ -105,7 +108,7 @@ def threaded_client(connection):
         elif data["command"] == "LOGOUT":
             username = data["username"]
             print(online_users)
-            online_users.remove(username)
+            del online_users[username]
             print(online_users)
             print(f"{username} is logged out!")
             add_to_log(f"{username} is logged out!")
