@@ -18,6 +18,9 @@ online_users = {}
 print('Waitiing for a Connection..')
 ServerSocket.listen(5)
 
+def add_to_log(info):
+    with open("server_log.txt", "a+") as file:
+        file.write(info+"\n")
 
 def format_message(data):
     pickled_data = pickle.dumps(data)
@@ -41,9 +44,11 @@ def register_client(user_data, client_socket):
         socket_addresses[client_socket].append(user_data["port"])
         client_addresses[username] = socket_addresses[client_socket]
         client_socket.sendall(str.encode("User successfully created!"))
+        add_to_log("User successfully created!")
 
     elif username in login_credentials:
         client_socket.sendall(str.encode("This username already in use!"))
+        add_to_log("This username already in use!")
 
 
 ####################  LOGIN  #####################
@@ -54,9 +59,12 @@ def login_client(user_data, client_socket):
         if password == login_credentials[username]:
             online_users[username] = 0
             client_socket.sendall(str.encode("CONFIRMED"))
+            add_to_log("CONFIRMED")
             return
 
     client_socket.sendall(str.encode("DECLINED"))
+    add_to_log("DECLINED")
+
 
 
 #################### SEARCH #####################
@@ -67,15 +75,18 @@ def search_users(user_data, client_socket):
             if username in online_users:
                 #packet = {"command": "FOUND", "username": username}
                 client_socket.send(format_message(client_addresses[username]))
+                add_to_log(client_addresses[username])
                 return
 
     client_socket.sendall(format_message(["NOT FOUND"]))
+    add_to_log("NOT FOUND")
 
 
 def threaded_client(connection):
     #connection.send(str.encode('Welcome to the Servern'))
     while True:
         data = receive_object(connection)
+        add_to_log(data["command"])
         if not data or data==False:
             break
 
@@ -97,7 +108,7 @@ def threaded_client(connection):
             online_users.remove(username)
             print(online_users)
             print(f"{username} is logged out!")
-
+            add_to_log(f"{username} is logged out!")
 
     connection.close()
 
@@ -108,6 +119,7 @@ def connection_guard():
             if online_users[username] == 20:
                 naughty_list.append(username)
                 print(f"{username}'s connection is terminated!")
+                add_to_log(f"{username}'s connection is terminated!")
                 continue
             online_users[username] += 1
         
@@ -122,6 +134,7 @@ while True:
     client_socket, address = ServerSocket.accept()
     socket_addresses[client_socket] = [address[0]]
     print('Connected to: ' + address[0] + ':' + str(address[1]))
+    add_to_log('Connected to: ' + address[0] + ':' + str(address[1]))
     start_new_thread(threaded_client, (client_socket, ))
     start_new_thread(connection_guard, (()))
     ThreadCount += 1
